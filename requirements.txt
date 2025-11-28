@@ -1,0 +1,4 @@
+Pillow
+requests
+# RPi.GPIO # Uncomment if running on Raspberry Pi
+# Jetson.GPIO # Uncomment if running on Jetson Nano
