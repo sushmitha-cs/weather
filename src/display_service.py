@@ -142,11 +142,21 @@ class DisplayService:
         temp_text = f"{temp_c}°C  {int(temp_f)}°F"
         draw.text((info_x, 35), temp_text, font=self.font_location, fill=0) # Use 24pt bold for temp line
         
+        # 4. Details
         # Wind
-        draw.text((info_x, 65), f"Wind: {wind} km/h", font=self.font_detail, fill=0)
+        wind_dir = weather_data.get('winddirection', 0)
+        def get_cardinal(d):
+            dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
+            ix = round(d / (360. / len(dirs)))
+            return dirs[ix % len(dirs)]
         
-        # Code/Condition
-        draw.text((info_x, 85), f"Code: {code}", font=self.font_detail, fill=0)
+        wind_cardinal = get_cardinal(wind_dir)
+        
+        draw.text((info_x, 65), f"Wind: {wind} km/h {wind_cardinal}", font=self.font_detail, fill=0)
+        
+        # Time / Update status
+        time_str = weather_data.get('time', '').split('T')[-1] # Extract HH:MM
+        draw.text((info_x, 85), f"Updated: {time_str}", font=self.font_detail, fill=0)
         
         self.epd.display(self.epd.getbuffer(image))
 
