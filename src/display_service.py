@@ -26,6 +26,11 @@ except (ImportError, RuntimeError, Exception) as e:
     
     epd2in13_V4 = MockModule()
 
+try:
+    from src.icons import IconDrawer
+except ImportError:
+    from icons import IconDrawer
+
 class DisplayService:
     def __init__(self):
         self.epd = epd2in13_V4.EPD()
@@ -33,26 +38,43 @@ class DisplayService:
         self.epd.Clear(0xFF)
         # Use default font for simplicity
         self.font = ImageFont.load_default()
+        # Try to load a larger font if available, otherwise default
+        try:
+            self.large_font = ImageFont.truetype("arial.ttf", 24)
+        except IOError:
+            self.large_font = ImageFont.load_default()
 
-    def update_display(self, weather_data):
+    def update_display(self, weather_data, location_name="Weather"):
         if not weather_data:
             return
         
         # Create image with swapped dimensions because we will rotate it or the driver handles it
-        # The driver's getbuffer expects image size to match width/height or height/width
         # EPD_WIDTH = 122, EPD_HEIGHT = 250
         # We usually draw in landscape mode (250x122)
         
         image = Image.new('1', (self.epd.height, self.epd.width), 255)  # 255: clear the frame
         draw = ImageDraw.Draw(image)
+        icon_drawer = IconDrawer(draw)
 
         temp = weather_data.get('temperature')
         wind = weather_data.get('windspeed')
         code = weather_data.get('weathercode')
         
-        draw.text((10, 10), f"Temp: {temp} C", font=self.font, fill=0)
-        draw.text((10, 30), f"Wind: {wind} km/h", font=self.font, fill=0)
-        draw.text((10, 50), f"Code: {code}", font=self.font, fill=0)
+        # Draw Location Name (Top)
+        draw.text((10, 5), location_name, font=self.large_font, fill=0)
+
+        # Draw Icon (Left side)
+        icon_size = 80
+        icon_drawer.draw_icon_for_code(code, 20, 35, icon_size)
+        
+        # Draw Text (Right side)
+        text_x = 120
+        temp_c = temp
+        temp_f = (temp_c * 9/5) + 32
+        
+        draw.text((text_x, 30), f"{temp_c}°C / {int(temp_f)}°F", font=self.large_font, fill=0)
+        draw.text((text_x, 60), f"Wind: {wind} km/h", font=self.font, fill=0)
+        draw.text((text_x, 80), f"Code: {code}", font=self.font, fill=0)
         
         self.epd.display(self.epd.getbuffer(image))
 
