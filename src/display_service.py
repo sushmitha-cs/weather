@@ -136,7 +136,7 @@ class DisplayService:
             draw.text((day_x + (col_width - w)//2, 70), day_name, font=self.font_forecast, fill=0)
             
             # Icon
-            small_icon_size = 30
+            small_icon_size = 20
             # For forecast, assume daytime (is_day=1) since we don't have hourly data
             icon_drawer.draw_icon_for_code(daily_code[i], day_x + (col_width - small_icon_size)//2, 90, small_icon_size, is_day=1)
             
