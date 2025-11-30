@@ -78,7 +78,7 @@ class DisplayService:
         
         # --- Current Weather (Top Half) ---
         # Icon
-        icon_size = 45
+        icon_size = 50
         icon_x = 5
         icon_y = 5
         code = current.get('weathercode')
@@ -146,6 +146,10 @@ class DisplayService:
             w = bbox[2] - bbox[0]
             draw.text((day_x + (col_width - w)//2, 125), temp_range, font=self.font_detail, fill=0)
 
+
+        # Rotate image 180 degrees
+        image = image.rotate(180)
+        
         self.epd.display(self.epd.getbuffer(image))
 
     def clear(self):
