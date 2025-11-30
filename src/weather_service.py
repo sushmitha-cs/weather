@@ -10,13 +10,18 @@ class WeatherService:
         params = {
             "latitude": lat if lat is not None else self.lat,
             "longitude": lon if lon is not None else self.lon,
-            "current_weather": True
+            "current_weather": True,
+            "daily": "weathercode,temperature_2m_max,temperature_2m_min",
+            "timezone": "auto"
         }
         try:
             response = requests.get(self.base_url, params=params)
             response.raise_for_status()
             data = response.json()
-            return data.get("current_weather")
+            return {
+                "current": data.get("current_weather"),
+                "daily": data.get("daily")
+            }
         except Exception as e:
             print(f"Error fetching weather: {e}")
             return None

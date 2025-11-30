@@ -23,7 +23,7 @@ def main():
 
     locations = [
         {"name": "Birmingham, AL", "lat": 33.5186, "lon": -86.8104},
-        {"name": "Calicut, Kerala", "lat": 11.2588, "lon": 75.7804}
+        #{"name": "Calicut, Kerala", "lat": 11.2588, "lon": 75.7804}
     ]
     current_location_index = 0
 

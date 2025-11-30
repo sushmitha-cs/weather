@@ -2,6 +2,7 @@ import os
 import sys
 import logging
 from PIL import Image, ImageDraw, ImageFont
+from datetime import datetime
 
 # Ensure lib is in path if running directly (for testing)
 if __name__ == "__main__":
@@ -60,104 +61,89 @@ class DisplayService:
         if not weather_data:
             return
         
+        current = weather_data.get('current', {})
+        daily = weather_data.get('daily', {})
+        
+        if not current:
+            return
+
         # EPD_WIDTH = 122, EPD_HEIGHT = 250
         # Landscape mode: 250x122
         width = self.epd.height
         height = self.epd.width
         
-        image = Image.new('1', (width, height), 255)  # 255: clear the frame
-        draw = ImageDraw.Draw(image)
-        icon_drawer = IconDrawer(draw)
-
-        temp = weather_data.get('temperature')
-        wind = weather_data.get('windspeed')
-        code = weather_data.get('weathercode')
-        
-        # --- Layout ---
-        
-        # 1. Location Name (Centered Top)
-        # Calculate text width to center it
-        bbox = draw.textbbox((0, 0), location_name, font=self.font_location)
-        text_width = bbox[2] - bbox[0]
-        x_loc = (width - text_width) // 2
-        draw.text((x_loc, 2), location_name, font=self.font_location, fill=0)
-
-        # 2. Icon (Left side, large)
-        icon_size = 90
-        icon_y = 30
-        icon_x = 10
-        icon_drawer.draw_icon_for_code(code, icon_x, icon_y, icon_size)
-        
-        # 3. Temperature (Right side, large)
-        temp_c = temp
-        temp_f = (temp_c * 9/5) + 32
-        temp_str = f"{int(temp_f)}°F" # Emphasize F, or show both compactly
-        # Let's show "68°F" large, and "20°C" smaller below or beside?
-        # User asked for both previously. Let's try to fit "20°C | 68°F" if it fits, or stack them.
-        # Given "make best use of space", large text is better.
-        # Let's do:
-        # 20°C
-        # 68°F
-        
-        text_x = 110
-        draw.text((text_x, 35), f"{temp_c}°C", font=self.font_temp, fill=0)
-        draw.text((text_x, 70), f"{int(temp_f)}°F", font=self.font_temp, fill=0)
-        
-        # 4. Details (Wind) - Bottom Right or below location?
-        # Let's put wind below location or in the corner.
-        # Space is tight with two large temps.
-        # Alternative: "20°C / 68°F" as one line might be too wide for 36pt.
-        # Let's try a slightly smaller font for temp if we want both on one line, OR stack them.
-        # Stacking seems good.
-        
-        # Wind
-        draw.text((text_x + 80, 55), f"Wind\n{wind}\nkm/h", font=self.font_detail, fill=0)
-        
-        # Actually, let's refine:
-        # Icon | Temp C / Temp F
-        #      | Wind
-        
-        # Redoing layout for cleaner look:
         image = Image.new('1', (width, height), 255)
         draw = ImageDraw.Draw(image)
         icon_drawer = IconDrawer(draw)
         
-        # Header
-        bbox = draw.textbbox((0, 0), location_name, font=self.font_location)
-        text_width = bbox[2] - bbox[0]
-        x_loc = (width - text_width) // 2
-        draw.text((x_loc, 0), location_name, font=self.font_location, fill=0)
-        
-        # Divider line
-        draw.line((0, 28, width, 28), fill=0, width=2)
-        
+        # --- Current Weather (Top Half) ---
         # Icon
-        icon_size = 80
-        icon_drawer.draw_icon_for_code(code, 5, 35, icon_size)
-        
-        # Info Area starts at x=90
-        info_x = 95
+        icon_size = 50
+        icon_x = 5
+        icon_y = 5
+        code = current.get('weathercode')
+        icon_drawer.draw_icon_for_code(code, icon_x, icon_y, icon_size)
         
         # Temp
+        temp_c = current.get('temperature')
+        temp_f = (temp_c * 9/5) + 32
         temp_text = f"{temp_c}°C  {int(temp_f)}°F"
-        draw.text((info_x, 35), temp_text, font=self.font_location, fill=0) # Use 24pt bold for temp line
         
-        # 4. Details
+        # Use a slightly smaller font for temp to fit nicely
+        draw.text((65, 10), temp_text, font=self.font_location, fill=0)
+        
         # Wind
-        wind_dir = weather_data.get('winddirection', 0)
+        wind = current.get('windspeed')
+        wind_dir = current.get('winddirection', 0)
         def get_cardinal(d):
             dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
             ix = round(d / (360. / len(dirs)))
             return dirs[ix % len(dirs)]
-        
         wind_cardinal = get_cardinal(wind_dir)
+        draw.text((65, 40), f"Wind: {wind} km/h {wind_cardinal}", font=self.font_detail, fill=0)
+
+        # Divider
+        draw.line((0, 65, width, 65), fill=0, width=2)
         
-        draw.text((info_x, 65), f"Wind: {wind} km/h {wind_cardinal}", font=self.font_detail, fill=0)
+        # --- Forecast (Bottom Half) ---
+        # We have daily data: time, weathercode, temperature_2m_max, temperature_2m_min
+        # We want to show today, tomorrow, day after (3 days)
         
-        # Time / Update status
-        time_str = weather_data.get('time', '').split('T')[-1] # Extract HH:MM
-        draw.text((info_x, 85), f"Updated: {time_str}", font=self.font_detail, fill=0)
+        daily_time = daily.get('time', [])
+        daily_code = daily.get('weathercode', [])
+        daily_max = daily.get('temperature_2m_max', [])
+        daily_min = daily.get('temperature_2m_min', [])
         
+        # Column width = width / 3
+        col_width = width // 3
+        
+        for i in range(min(3, len(daily_time))):
+            day_x = i * col_width
+            
+            # Date -> Day name
+            date_str = daily_time[i]
+            date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+            day_name = date_obj.strftime('%a') # Mon, Tue...
+            
+            # Center text in column
+            # Day Name
+            bbox = draw.textbbox((0, 0), day_name, font=self.font_detail)
+            w = bbox[2] - bbox[0]
+            draw.text((day_x + (col_width - w)//2, 70), day_name, font=self.font_detail, fill=0)
+            
+            # Icon
+            small_icon_size = 30
+            icon_drawer.draw_icon_for_code(daily_code[i], day_x + (col_width - small_icon_size)//2, 90, small_icon_size)
+            
+            # Temp Range (Max/Min)
+            # e.g. 20/15
+            t_max = daily_max[i]
+            t_min = daily_min[i]
+            temp_range = f"{int(t_max)}/{int(t_min)}"
+            bbox = draw.textbbox((0, 0), temp_range, font=self.font_detail)
+            w = bbox[2] - bbox[0]
+            draw.text((day_x + (col_width - w)//2, 125), temp_range, font=self.font_detail, fill=0)
+
         self.epd.display(self.epd.getbuffer(image))
 
     def clear(self):
