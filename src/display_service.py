@@ -45,17 +45,20 @@ class DisplayService:
             self.font_location = ImageFont.truetype("DejaVuSans-Bold.ttf", 24)
             self.font_temp = ImageFont.truetype("DejaVuSans-Bold.ttf", 36)
             self.font_detail = ImageFont.truetype("DejaVuSans.ttf", 18)
+            self.font_forecast = ImageFont.truetype("DejaVuSans-Bold.ttf", 22)
         except IOError:
             try:
                 # Fallback for Windows
                 self.font_location = ImageFont.truetype("arialbd.ttf", 24)
                 self.font_temp = ImageFont.truetype("arialbd.ttf", 36)
                 self.font_detail = ImageFont.truetype("arial.ttf", 18)
+                self.font_forecast = ImageFont.truetype("arialbd.ttf", 22)
             except IOError:
                 # Ultimate fallback
                 self.font_location = ImageFont.load_default()
                 self.font_temp = ImageFont.load_default()
                 self.font_detail = ImageFont.load_default()
+                self.font_forecast = ImageFont.load_default()
 
     def update_display(self, weather_data, location_name="Weather"):
         if not weather_data:
@@ -76,8 +79,9 @@ class DisplayService:
         draw = ImageDraw.Draw(image)
         icon_drawer = IconDrawer(draw)
         
-        # --- Current Weather (Top Half) ---
-        # Icon
+        # --- Current Weather (Top Half) - Split into 2 columns ---
+        
+        # LEFT COLUMN: Icon + Temperature
         icon_size = 50
         icon_x = 5
         icon_y = 5
@@ -85,26 +89,38 @@ class DisplayService:
         is_day = current.get('is_day', 1)
         icon_drawer.draw_icon_for_code(code, icon_x, icon_y, icon_size, is_day)
         
-        # Temp
+        # Temperature below icon
         temp_c = current.get('temperature')
         temp_f = (temp_c * 9/5) + 32
-        temp_text = f"{temp_c}°C  {int(temp_f)}°F"
+        temp_text = f"{int(temp_c)}°C"
+        draw.text((10, 58), temp_text, font=self.font_location, fill=0)
         
-        # Use a slightly smaller font for temp to fit nicely
-        draw.text((65, 10), temp_text, font=self.font_location, fill=0)
+        # RIGHT COLUMN: Feels Like + Sunrise/Sunset
+        right_col_x = 125
         
-        # Wind
-        wind = current.get('windspeed')
-        wind_dir = current.get('winddirection', 0)
-        def get_cardinal(d):
-            dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW']
-            ix = round(d / (360. / len(dirs)))
-            return dirs[ix % len(dirs)]
-        wind_cardinal = get_cardinal(wind_dir)
-        draw.text((65, 40), f"Wind: {wind} km/h {wind_cardinal}", font=self.font_detail, fill=0)
+        # Feels like temperature
+        apparent_temp_c = current.get('apparent_temperature', temp_c)
+        apparent_temp_f = (apparent_temp_c * 9/5) + 32
+        draw.text((right_col_x, 5), "Feels", font=self.font_detail, fill=0)
+        feels_text = f"{int(apparent_temp_c)}°C"
+        draw.text((right_col_x, 25), feels_text, font=self.font_location, fill=0)
+        
+        # Sunrise/Sunset
+        daily = weather_data.get('daily', {})
+        sunrise_times = daily.get('sunrise', [])
+        sunset_times = daily.get('sunset', [])
+        
+        if sunrise_times and sunset_times:
+            # Get today's sunrise/sunset (first entry)
+            from datetime import datetime
+            sunrise = datetime.fromisoformat(sunrise_times[0]).strftime('%H:%M')
+            sunset = datetime.fromisoformat(sunset_times[0]).strftime('%H:%M')
+            
+            draw.text((right_col_x, 50), f"↑{sunrise}", font=self.font_detail, fill=0)
+            draw.text((right_col_x, 68), f"↓{sunset}", font=self.font_detail, fill=0)
 
-        # Divider
-        draw.line((0, 65, width, 65), fill=0, width=2)
+        # Divider between top and bottom
+        draw.line((0, 90, width, 90), fill=0, width=2)
         
         # --- Forecast (Bottom Half) ---
         # We have daily data: time, weathercode, temperature_2m_max, temperature_2m_min
@@ -128,23 +144,23 @@ class DisplayService:
             
             # Center text in column
             # Day Name
-            bbox = draw.textbbox((0, 0), day_name, font=self.font_detail)
+            bbox = draw.textbbox((0, 0), day_name, font=self.font_forecast)
             w = bbox[2] - bbox[0]
-            draw.text((day_x + (col_width - w)//2, 70), day_name, font=self.font_detail, fill=0)
+            draw.text((day_x + (col_width - w)//2, 95), day_name, font=self.font_forecast, fill=0)
             
             # Icon
             small_icon_size = 25
             # For forecast, assume daytime (is_day=1) since we don't have hourly data
-            icon_drawer.draw_icon_for_code(daily_code[i], day_x + (col_width - small_icon_size)//2, 90, small_icon_size, is_day=1)
+            icon_drawer.draw_icon_for_code(daily_code[i], day_x + (col_width - small_icon_size)//2, 110, small_icon_size, is_day=1)
             
             # Temp Range (Max/Min)
             # e.g. 20/15
             t_max = daily_max[i]
             t_min = daily_min[i]
             temp_range = f"{int(t_max)}/{int(t_min)}"
-            bbox = draw.textbbox((0, 0), temp_range, font=self.font_detail)
+            bbox = draw.textbbox((0, 0), temp_range, font=self.font_forecast)
             w = bbox[2] - bbox[0]
-            draw.text((day_x + (col_width - w)//2, 125), temp_range, font=self.font_detail, fill=0)
+            draw.text((day_x + (col_width - w)//2, 138), temp_range, font=self.font_forecast, fill=0)
 
 
         # Rotate image 180 degrees

@@ -43,9 +43,9 @@ def main():
             # Cycle to next location
             current_location_index = (current_location_index + 1) % len(locations)
 
-            # Sleep for 30 minutes
-            logger.info("Sleeping for 30 minutes...")
-            time.sleep(1800) 
+            # Sleep for 60 minutes
+            logger.info("Sleeping for 60 minutes...")
+            time.sleep(60 * 60) 
             
     except KeyboardInterrupt:
         logger.info("Exiting...")
