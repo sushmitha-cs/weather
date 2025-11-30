@@ -78,7 +78,7 @@ class DisplayService:
         
         # --- Current Weather (Top Half) ---
         # Icon
-        icon_size = 35
+        icon_size = 45
         icon_x = 5
         icon_y = 5
         code = current.get('weathercode')
@@ -133,7 +133,7 @@ class DisplayService:
             draw.text((day_x + (col_width - w)//2, 70), day_name, font=self.font_detail, fill=0)
             
             # Icon
-            small_icon_size = 30
+            small_icon_size = 25
             # For forecast, assume daytime (is_day=1) since we don't have hourly data
             icon_drawer.draw_icon_for_code(daily_code[i], day_x + (col_width - small_icon_size)//2, 90, small_icon_size, is_day=1)
             
