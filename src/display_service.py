@@ -78,11 +78,12 @@ class DisplayService:
         
         # --- Current Weather (Top Half) ---
         # Icon
-        icon_size = 50
+        icon_size = 35
         icon_x = 5
         icon_y = 5
         code = current.get('weathercode')
-        icon_drawer.draw_icon_for_code(code, icon_x, icon_y, icon_size)
+        is_day = current.get('is_day', 1)
+        icon_drawer.draw_icon_for_code(code, icon_x, icon_y, icon_size, is_day)
         
         # Temp
         temp_c = current.get('temperature')
@@ -133,7 +134,8 @@ class DisplayService:
             
             # Icon
             small_icon_size = 30
-            icon_drawer.draw_icon_for_code(daily_code[i], day_x + (col_width - small_icon_size)//2, 90, small_icon_size)
+            # For forecast, assume daytime (is_day=1) since we don't have hourly data
+            icon_drawer.draw_icon_for_code(daily_code[i], day_x + (col_width - small_icon_size)//2, 90, small_icon_size, is_day=1)
             
             # Temp Range (Max/Min)
             # e.g. 20/15

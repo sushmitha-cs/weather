@@ -21,6 +21,16 @@ class IconDrawer:
             y2 = cy + (r//2 + 2 + ray_len) * math.sin(rad)
             self.draw.line((x1, y1, x2, y2), fill=0, width=2)
 
+    def draw_moon(self, x, y, size):
+        """Draws a moon icon (crescent)."""
+        r = size // 2
+        cx, cy = x + r, y + r
+        # Draw full circle
+        self.draw.ellipse((cx - r//2, cy - r//2, cx + r//2, cy + r//2), fill=0)
+        # Draw overlapping white circle to create crescent
+        offset = r // 4
+        self.draw.ellipse((cx - r//2 + offset, cy - r//2, cx + r//2 + offset, cy + r//2), fill=255)
+
     def draw_cloud(self, x, y, size):
         """Draws a cloud icon."""
         # Simple cloud made of circles
@@ -149,8 +159,15 @@ class IconDrawer:
         points = [(lx, ly), (lx - 8, ly + 15), (lx + 2, ly + 15), (lx - 5, ly + 30)]
         self.draw.line(points, fill=0, width=3)
 
-    def draw_icon_for_code(self, code, x, y, size):
-        """Maps WMO weather code to icon."""
+    def draw_icon_for_code(self, code, x, y, size, is_day=1):
+        """Maps WMO weather code to icon.
+        
+        Args:
+            code: WMO weather code
+            x, y: Position
+            size: Icon size
+            is_day: 1 for day, 0 for night
+        """
         # Codes: https://open-meteo.com/en/docs
         # 0: Clear sky
         # 1, 2, 3: Mainly clear, partly cloudy, and overcast
@@ -166,12 +183,21 @@ class IconDrawer:
         # 95: Thunderstorm
         # 96, 99: Thunderstorm with hail
 
-        if code == 0: # Clear sky -> Sun
-            self.draw_sun(x, y, size)
-        elif code == 1: # Mainly clear -> Sun + Cloud
-            self.draw_sun_cloud(x, y, size)
-        elif code == 2: # Partly cloudy -> Sun + Cloud
-            self.draw_sun_cloud(x, y, size)
+        if code == 0: # Clear sky
+            if is_day:
+                self.draw_sun(x, y, size)
+            else:
+                self.draw_moon(x, y, size)
+        elif code == 1: # Mainly clear
+            if is_day:
+                self.draw_sun_cloud(x, y, size)
+            else:
+                self.draw_moon(x, y, size)  # Moon with slight clouds
+        elif code == 2: # Partly cloudy
+            if is_day:
+                self.draw_sun_cloud(x, y, size)
+            else:
+                self.draw_broken_clouds(x, y, size)  # Just clouds at night
         elif code == 3: # Overcast -> Broken Clouds
             self.draw_broken_clouds(x, y, size)
         elif code in [45, 48]: # Fog
